@@ -1,0 +1,28 @@
+version: "3.8"
+
+x-base: &gistsapi-base
+    build: .
+    environment:
+        - REDIS_URL=redis://redis:6379/0
+        - CELERY_BROKER_URL=redis://redis:6379/0
+        - CELERY_RESULT_BACKEND=redis://redis:6379/0
+
+services:
+    redis:
+        image: redis:7.0
+    gistsapi:
+        <<: *gistsapi-base
+        image: gistsapi
+        command: flask --app gistapi/gistapi.py --debug run --host=0.0.0.0 --port=8000
+        depends_on:
+            - redis
+        volumes:
+            - .:/app
+        ports:
+            - "8000:8000"
+    celery_worker:
+        <<: *gistsapi-base
+        command: celery --app gistapi.gistapi.celery worker --loglevel=debug
+    celery_beat:
+        <<: *gistsapi-base
+        command: celery --app gistapi.gistapi.celery beat --loglevel=debug
