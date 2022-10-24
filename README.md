@@ -3,6 +3,7 @@ to do that but it ended taking way more time to setup Docker with Celery than I 
 
 ### Why Celery? 
 > Implement handling of huge gists
+
 As huge gists may take a long time for fetching I thought that using asynchronous task and giving the possibility for checking its status
 would be a good way for handling it.
 
