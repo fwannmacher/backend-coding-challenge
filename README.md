@@ -1,34 +1,73 @@
-# Challenge
+In the given 1.5 hours for implementing the solution I didn't have time for implementing error handling nor test unfortunatelly. I really wanted
+to do that but it ended taking way more time to setup Docker with Celery than I expected.
 
-This challenge is divided between the main task and additional stretch goals. All of those stretch goals are optional, but we would love to see them implemented. It is expected that you should be able to finish the challenge in about 1.5 hours. If you feel you are not able to implement everything on time, please, try instead describing how you would solve the points you didn't finish.
+### Why Celery? 
+> Implement handling of huge gists
+As huge gists may take a long time for fetching I thought that using asynchronous task and giving the possibility for checking its status
+would be a good way for handling it.
 
-And also, please do not hesitate to ask any questions. Good luck!
-
-## gistapi
-
-Gistapi is a simple HTTP API server implemented in Flask for searching a user's public Github Gists.
-The existing code already implements most of the Flask boilerplate for you.
-The main functionality is left for you to implement.
-The goal is to implement an endpoint that searches a user's Gists with a regular expression.
-For example, I'd like to know all Gists for user `justdionysus` that contain the pattern `import requests`.
-The code in `gistapi.py` contains some comments to help you find your way.
-
-To complete the challenge, you'll have to write some HTTP queries from `Gistapi` to the Github API to pull down each Gist for the target user.
-Please don't use a github API client (i.e. using a basic HTTP library like requests or aiohttp or urllib3 is fine but not PyGithub or similar).
+### Why Redis?
+redis is really simple to integrate and setup using Docker and it can be used as backend for Celery. Other than that we needed a way for
+storing the result for searchs. Probably the best solution would be writing the result to files but given the time constraints and the
+fact that I already had Redis up and running I ended using it.
 
 
-## Stretch goals
+## How to run
+After having *Docker* and *docker-compose* installed run the following command in the project's root directory
 
-* Implement a few tests (using a testing framework of your choice)
-* In all places where it makes sense, implement data validation, error handling, pagination
-* Migrate from `requirements.txt` to `pyproject.toml` (e.g. using [poetry](https://python-poetry.org/))
-* Implement a simple Dockerfile
-* Implement handling of huge gists
-* Set up the necessary tools to ensure code quality (feel free to pick up a set of tools you personally prefer)
-* Document how to start the application, how to build the docker image, how to run tests, and (optionally) how to run code quality checkers
-* Prepare a TODO.md file describing possible further improvements to the archtiecture:
-    - Can we use a database? What for? SQL or NoSQL?
-    - How can we protect the api from abusing it?
-    - How can we deploy the application in a cloud environment?
-    - How can we be sure the application is alive and works as expected when deployed into a cloud environment?
-    - Any other topics you may find interesting and/or important to cover
+```bash
+$ docker-compose build
+$ docker-compose up
+```
+
+These will create the containers and start the application server witch will be available on [http://localhost:8000](http://localhost:8000)
+
+Follwoing and example call using *curl*
+
+```bash
+$ curl -X POST localhost:8000/api/v1/search \
+    -d '{"username":"justdionysus","pattern":"import requests"}' \
+    -H "Content-Type: application/json"
+```
+
+Such call will return a request id wich will be used for check the task status and for fetching the result. The response will look like the following
+
+```bash
+{
+  "request_id": "4a6867b3-0686-4f95-a080-d93fc2537b30"
+}
+```
+
+For checking the task status the request id is used in the URL as the follwoing
+
+```bash
+$ curl -X GET localhost:8000/api/v1/search/4a6867b3-0686-4f95-a080-d93fc2537b30
+```
+
+And it results in something like
+```bash
+{
+  "status": "SUCCESS"
+}
+```
+
+When the status returned is **SUCCESS** then the result can be fetched as the follwoing
+```bash
+$ curl -X GET localhost:8000/api/v1/search_result/4a6867b3-0686-4f95-a080-d93fc2537b30
+```
+
+And the result will look like
+```bash
+{
+  "matches": [
+    {
+      "comments": 0,
+      ...
+      "user": null
+    }
+  ],
+  "pattern": "import requests",
+  "status": "success",
+  "username": "justdionysus"
+}
+```
